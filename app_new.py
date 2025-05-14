@@ -36,8 +36,10 @@ SCHEMA = {
 def setup_kaggle_credentials():
     """Set up Kaggle credentials from Streamlit secrets"""
     try:
-        if not os.path.exists(os.path.expanduser('~/.kaggle')):
-            os.makedirs(os.path.expanduser('~/.kaggle'))
+        # Create .kaggle directory in the correct location
+        kaggle_dir = os.path.expanduser('~/.kaggle')
+        if not os.path.exists(kaggle_dir):
+            os.makedirs(kaggle_dir, exist_ok=True)
         
         # Get Kaggle credentials from Streamlit secrets
         if hasattr(st, 'secrets') and 'kaggle' in st.secrets:
@@ -46,12 +48,17 @@ def setup_kaggle_credentials():
                 'key': st.secrets['kaggle']['key']
             }
             
-            # Save credentials to kaggle.json
-            with open(os.path.expanduser('~/.kaggle/kaggle.json'), 'w') as f:
+            # Save credentials to kaggle.json in the correct location
+            kaggle_json_path = os.path.join(kaggle_dir, 'kaggle.json')
+            with open(kaggle_json_path, 'w') as f:
                 json.dump(kaggle_token, f)
             
-            # Set appropriate permissions
-            os.chmod(os.path.expanduser('~/.kaggle/kaggle.json'), 0o600)
+            # Set appropriate permissions (read/write for owner only)
+            os.chmod(kaggle_json_path, 0o600)
+            
+            # Also set the KAGGLE_CONFIG_DIR environment variable
+            os.environ['KAGGLE_CONFIG_DIR'] = kaggle_dir
+            
             return True
         else:
             print("Kaggle credentials not found in Streamlit secrets")
