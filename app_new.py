@@ -107,8 +107,25 @@ def get_kaggle_api():
         print(f"Error initializing Kaggle API: {e}")
         return None
 
+# Global flag to track if we've downloaded the dataset in this session
+DATASET_DOWNLOADED = False
+
 def download_kaggle_dataset():
-    """Download dataset from Kaggle"""
+    """Download dataset from Kaggle if not already downloaded"""
+    global DATASET_DOWNLOADED
+    
+    # Check if we've already downloaded the dataset in this session
+    if DATASET_DOWNLOADED:
+        print("Dataset already downloaded in this session")
+        return True
+    
+    # Check if all required CSV files already exist
+    all_files_exist = all(os.path.exists(file_info['filename']) for file_info in CSV_FILES_INFO)
+    if all_files_exist:
+        print("All required CSV files already exist, skipping download")
+        DATASET_DOWNLOADED = True
+        return True
+        
     try:
         # Get authenticated API instance
         api = get_kaggle_api()
@@ -126,7 +143,13 @@ def download_kaggle_dataset():
             quiet=False
         )
         
-        print("Dataset downloaded successfully")
+        # Verify the files were downloaded
+        all_files_exist = all(os.path.exists(file_info['filename']) for file_info in CSV_FILES_INFO)
+        if not all_files_exist:
+            raise Exception("Some required files are missing after download")
+        
+        print("Dataset downloaded and verified successfully")
+        DATASET_DOWNLOADED = True
         return True
     except Exception as e:
         error_msg = f"Error downloading Kaggle dataset: {str(e)}"
