@@ -6,4 +6,4 @@ scikit-learn
 pysqlite3-binary
 streamlit
 # For downloading Kaggle datasets
-kaggle
+kaggle==1.5.13

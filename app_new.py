@@ -76,13 +76,13 @@ def setup_kaggle_credentials():
         print(f"Error setting up Kaggle credentials: {e}")
         return False
 
-def download_kaggle_dataset():
-    """Download dataset from Kaggle"""
+def get_kaggle_api():
+    """Get a properly configured Kaggle API instance"""
     try:
-        # Initialize Kaggle API with explicit config
+        # Initialize Kaggle API
         api = KaggleApi()
         
-        # Explicitly set the config path
+        # Set configuration
         config_path = os.environ.get('KAGGLE_CONFIG_DIR') or os.path.expanduser('~/.kaggle')
         if not os.path.exists(config_path):
             os.makedirs(config_path, exist_ok=True)
@@ -96,21 +96,43 @@ def download_kaggle_dataset():
             config_file = os.path.join(config_path, 'kaggle.json')
             if not os.path.exists(config_file):
                 print(f"Config file not found at {config_file}")
-                return False
+                return None
             print(f"Using config file at {config_file}")
             # Try setting the environment variable and authenticate again
             os.environ['KAGGLE_CONFIG_DIR'] = config_path
             api.authenticate()
         
+        return api
+    except Exception as e:
+        print(f"Error initializing Kaggle API: {e}")
+        return None
+
+def download_kaggle_dataset():
+    """Download dataset from Kaggle"""
+    try:
+        # Get authenticated API instance
+        api = get_kaggle_api()
+        if api is None:
+            raise Exception("Failed to initialize Kaggle API")
+        
         # Download the dataset
         print(f"Downloading dataset {KAGGLE_DATASET}...")
-        api.dataset_download_files(KAGGLE_DATASET, path='.', unzip=True)
+        
+        # Use the dataset_download_files method without additional parameters
+        api.dataset_download_files(
+            dataset=KAGGLE_DATASET,
+            path='.',
+            unzip=True,
+            quiet=False
+        )
+        
         print("Dataset downloaded successfully")
         return True
     except Exception as e:
-        print(f"Error downloading Kaggle dataset: {e}")
+        error_msg = f"Error downloading Kaggle dataset: {str(e)}"
+        print(error_msg)
         if hasattr(st, 'error'):
-            st.error(f"Error downloading Kaggle dataset: {str(e)}")
+            st.error(error_msg)
         return False
 
 def create_and_populate_db():
