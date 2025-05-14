@@ -146,24 +146,35 @@ def create_and_populate_db():
         if not download_kaggle_dataset():
             raise Exception("Failed to download Kaggle dataset")
     
-    # Remove existing database file if it exists to start fresh
-    if os.path.exists(DATABASE_NAME):
-        os.remove(DATABASE_NAME)
-        print(f"Removed existing database: {DATABASE_NAME}")
-
+    # Check if database exists and has tables
+    db_exists = os.path.exists(DATABASE_NAME)
+    
     conn = None
     try:
         # Create a connection to the SQLite database
         conn = sqlite3.connect(DATABASE_NAME)
-        print(f"Database '{DATABASE_NAME}' created successfully.")
+        cursor = conn.cursor()
+        
+        if not db_exists:
+            print(f"Database '{DATABASE_NAME}' created successfully.")
+        else:
+            print(f"Using existing database: {DATABASE_NAME}")
 
-        # Load data from each CSV into a new table
+        # Load data from each CSV into a table
         for file_info in CSV_FILES_INFO:
             filename = file_info['filename']
             table_name = file_info['table_name']
 
             if not os.path.exists(filename):
                 raise FileNotFoundError(f"CSV file not found: {filename}")
+
+            # Check if table already exists
+            cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}';")
+            table_exists = cursor.fetchone() is not None
+            
+            if table_exists:
+                print(f"Table '{table_name}' already exists. Skipping...")
+                continue
 
             print(f"Processing {filename} into table '{table_name}'...")
 
@@ -172,28 +183,37 @@ def create_and_populate_db():
             first_chunk = True
             for chunk in pd.read_csv(filename, chunksize=chunk_size):
                 if_exists_action = 'replace' if first_chunk else 'append'
-                chunk.to_sql(table_name, conn, if_exists_action, index=False)
+                chunk.to_sql(table_name, conn, if_exists=if_exists_action, index=False)
                 first_chunk = False
                 print(f"  Loaded a chunk into '{table_name}'")
 
             print(f"Successfully loaded all data from {filename} into table '{table_name}'.")
 
         print("Database population complete.")
+        return True
 
     except sqlite3.Error as e:
-        print(f"SQLite error: {e}")
+        error_msg = f"SQLite error: {e}"
+        print(error_msg)
+        if hasattr(st, 'error'):
+            st.error(error_msg)
         return False
     except pd.errors.EmptyDataError:
-        print(f"Error: One of the CSV files is empty or not found at the specified path.")
+        error_msg = "Error: One of the CSV files is empty or not found at the specified path."
+        print(error_msg)
+        if hasattr(st, 'error'):
+            st.error(error_msg)
         return False
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        error_msg = f"An unexpected error occurred: {e}"
+        print(error_msg)
+        if hasattr(st, 'error'):
+            st.error(error_msg)
         return False
     finally:
         if conn:
             conn.close()
-            print(f"Database connection closed.")
-    return True
+            print("Database connection closed.")
 
 def load_data():
     """Loads data from the database."""
