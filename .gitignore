@@ -1,0 +1,75 @@
+# Data files
+*.csv
+*.xlsx
+*.json
+
+# Database files
+*.db
+*.sqlite3
+*.sqlite
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.env/
+.venv/
+ENV/
+
+# Debug and test files
+debug_output.txt
+test.py
+alter_table.py
+database_structure.py
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+database_structure.py
+*.log
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+wheels/
+*.egg
+
+# Local configuration
+.streamlit/
+.env
+.env.local
+.env.*.local
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# Temporary files
+*.bak
+*.tmp
+*~
+
+# System files
+Thumbs.db
