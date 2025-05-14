@@ -5,3 +5,5 @@ scikit-learn
 # For Streamlit Cloud, especially if you encounter sqlite version issues:
 pysqlite3-binary
 streamlit
+# For downloading Kaggle datasets
+kaggle
