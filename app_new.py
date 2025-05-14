@@ -36,10 +36,17 @@ SCHEMA = {
 def setup_kaggle_credentials():
     """Set up Kaggle credentials from Streamlit secrets"""
     try:
-        # Create .kaggle directory in the correct location
-        kaggle_dir = os.path.expanduser('~/.kaggle')
-        if not os.path.exists(kaggle_dir):
-            os.makedirs(kaggle_dir, exist_ok=True)
+        # Try both possible locations
+        kaggle_dirs = [
+            os.path.expanduser('~/.kaggle'),
+            os.path.expanduser('~/.config/kaggle')
+        ]
+        
+        created = False
+        for kaggle_dir in kaggle_dirs:
+            if not os.path.exists(kaggle_dir):
+                os.makedirs(kaggle_dir, exist_ok=True)
+                created = True
         
         # Get Kaggle credentials from Streamlit secrets
         if hasattr(st, 'secrets') and 'kaggle' in st.secrets:
@@ -48,16 +55,18 @@ def setup_kaggle_credentials():
                 'key': st.secrets['kaggle']['key']
             }
             
-            # Save credentials to kaggle.json in the correct location
-            kaggle_json_path = os.path.join(kaggle_dir, 'kaggle.json')
-            with open(kaggle_json_path, 'w') as f:
-                json.dump(kaggle_token, f)
+            # Save credentials to both possible locations
+            for kaggle_dir in kaggle_dirs:
+                kaggle_json_path = os.path.join(kaggle_dir, 'kaggle.json')
+                with open(kaggle_json_path, 'w') as f:
+                    json.dump(kaggle_token, f)
+                os.chmod(kaggle_json_path, 0o600)
             
-            # Set appropriate permissions (read/write for owner only)
-            os.chmod(kaggle_json_path, 0o600)
-            
-            # Also set the KAGGLE_CONFIG_DIR environment variable
-            os.environ['KAGGLE_CONFIG_DIR'] = kaggle_dir
+            # Set the KAGGLE_CONFIG_DIR environment variable to the first existing directory
+            config_dir = next((d for d in kaggle_dirs if os.path.exists(d)), None)
+            if config_dir:
+                os.environ['KAGGLE_CONFIG_DIR'] = config_dir
+                print(f"Set KAGGLE_CONFIG_DIR to {config_dir}")
             
             return True
         else:
@@ -70,17 +79,38 @@ def setup_kaggle_credentials():
 def download_kaggle_dataset():
     """Download dataset from Kaggle"""
     try:
-        # Initialize Kaggle API
+        # Initialize Kaggle API with explicit config
         api = KaggleApi()
-        api.authenticate()
+        
+        # Explicitly set the config path
+        config_path = os.environ.get('KAGGLE_CONFIG_DIR') or os.path.expanduser('~/.kaggle')
+        if not os.path.exists(config_path):
+            os.makedirs(config_path, exist_ok=True)
+        
+        # Try to authenticate
+        try:
+            api.authenticate()
+        except Exception as e:
+            print(f"Authentication failed: {e}")
+            # Try to find the config file
+            config_file = os.path.join(config_path, 'kaggle.json')
+            if not os.path.exists(config_file):
+                print(f"Config file not found at {config_file}")
+                return False
+            print(f"Using config file at {config_file}")
+            # Try setting the environment variable and authenticate again
+            os.environ['KAGGLE_CONFIG_DIR'] = config_path
+            api.authenticate()
         
         # Download the dataset
+        print(f"Downloading dataset {KAGGLE_DATASET}...")
         api.dataset_download_files(KAGGLE_DATASET, path='.', unzip=True)
+        print("Dataset downloaded successfully")
         return True
     except Exception as e:
         print(f"Error downloading Kaggle dataset: {e}")
         if hasattr(st, 'error'):
-            st.error(f"Error downloading Kaggle dataset: {e}")
+            st.error(f"Error downloading Kaggle dataset: {str(e)}")
         return False
 
 def create_and_populate_db():
